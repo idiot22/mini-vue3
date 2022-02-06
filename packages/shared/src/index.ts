@@ -1,6 +1,6 @@
-const shared = {
-
+const isObject = (val: any) => {
+  return typeof val === 'object' && val !== null
 }
 export {
-  shared
+  isObject
 }
