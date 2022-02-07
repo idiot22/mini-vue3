@@ -12,14 +12,19 @@
 <script src='../node_modules/@vue/reactivity/dist//reactivity.global.js'>
 </script>
 <script>
-  let { reactive, shallowReactive, readonly, shallowReadonly } = VueReactivity
-  let state = readonly({
+  let { reactive, shallowReactive, readonly, shallowReadonly, effect } = VueReactivity
+  let state = reactive({
     name: 'zf',
-    age: {
-      n: 12
-    }
+    age: 12,
+    sex: [1,2,3,4]
   })
-  state.age = 999
-  console.log(state, state.age.n)
+  effect(()=>{
+    let aa = `我的年龄${state.age}` + state.sex[3]+ state.sex.length
+    console.log(aa, '执行effect')
+  })
+  setTimeout(()=>{
+    state.age = 18
+    state.sex.length = 2
+  },1000)
 </script>
 </html>
