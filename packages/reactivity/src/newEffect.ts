@@ -1,14 +1,76 @@
-import { isArray, isIntegerKey } from "@vue/shared"
+import { extend, isArray, isIntegerKey } from "@vue/shared"
 import { TriggerOrTypes } from "./operators"
-
-export function effect(fn, options){
-  const effect = createReactiveEffect(fn, options)
-  if(!options?.lazy){
-    effect()
+// 用于收集依赖
+let shouldTrack = true
+export class ReactiveEffect {
+  active = true
+  deps = []
+  public onStop?: () => void
+  constructor(public fn, public scheduler?){
+    console.log('创建 ReactiveEffect 对象')
   }
-  return effect
+  run(){
+    // active为false就执行fn，但是不收集依赖
+    if(!this.active){
+      return this.fn()
+    }
+    // 执行fn收集依赖
+    shouldTrack = true
+    activeEffect = this
+    console.log('执行用户传入的fn')
+    const result = this.fn()
+    // 重置
+    shouldTrack = false
+    activeEffect = undefined
+
+    return result
+  }
+
+  stop() {
+    // active为了避免重复调用stop
+    if(this.active){
+      cleanupEffect(this)
+      if(this.onStop){
+        this.onStop()
+      }
+      this.active = false
+    }
+  }
+}
+function cleanupEffect(effect){
+  effect.deps.forEach((dep) => {
+    dep.delete(effect)
+  })
+  effect.deps.length = 0
+}
+// export function effect(fn, options){
+//   const effect = createReactiveEffect(fn, options)
+//   if(!options?.lazy){
+//     effect()
+//   }
+//   return effect
+// }
+export function effect(fn, options = {}){
+  let _effect = new ReactiveEffect(fn)
+  extend(_effect, options)
+  if(!options?.lazy){
+    // 把当前activeEffect更新，调用fn，收集effect依赖
+    _effect.run()
+  }
+  // 返回run方法
+  // 让用户可以自行选择调用时机，lazy的时候就要用户自己调用
+  const runner = _effect.run.bind(_effect)
+  runner.effect = _effect
+  return runner
 }
 
+export function stop(runner){
+  runner.effect.stop()
+}
+
+// export function track(target, type, key){
+  
+// }
 let uid = 0
 let activeEffect
 let effectStack = []
@@ -81,13 +143,6 @@ export function trigger(target, type, key?, newValue?, oldValue?){
           add(depsMap.get('length'))
         }
     }
-    effects.forEach((effect: any) => {
-      if(effect.options.scheduler){
-        effect.options.scheduler()
-      }else{
-        effect()
-      }
-    })
     console.log(effects, 'effect触发')
   }
 }

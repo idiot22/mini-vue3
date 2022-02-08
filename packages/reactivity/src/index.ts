@@ -12,3 +12,5 @@ export {
   shallowRef, 
   toRef, 
   toRefs} from './ref'
+
+export { computed } from './computed'
