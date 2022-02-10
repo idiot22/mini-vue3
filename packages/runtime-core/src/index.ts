@@ -1,3 +1,1 @@
-export const a ={
-  f: 3
-}
+export {createRenderer} from './renderer'
