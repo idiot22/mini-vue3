@@ -3,7 +3,7 @@ const fs = require('fs')
 // 开启子进程
 const execa = require('execa')
 
-const target = 'reactivity'
+const target = 'runtime-dom'
 build(target)
 // 对目标进行依次打包，并行打包
 async function build(target){
