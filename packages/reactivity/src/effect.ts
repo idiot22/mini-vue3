@@ -1,7 +1,7 @@
 import { isArray, isIntegerKey } from "@vue/shared"
 import { TriggerOrTypes } from "./operators"
 
-export function effect(fn, options){
+export function effect(fn, options?){
   const effect = createReactiveEffect(fn, options)
   if(!options?.lazy){
     effect()

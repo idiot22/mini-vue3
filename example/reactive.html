@@ -12,7 +12,9 @@
 <script src='../node_modules/@vue/reactivity/dist//reactivity.global.js'>
 </script>
 <script>
-  let { reactive, shallowReactive, readonly, shallowReadonly, effect } = VueReactivity
+  console.log(VueReactivity, 'VueReactivity')
+  let { reactive, shallowReactive, readonly, shallowReadonly, effect, ref, computed } = VueReactivity
+  let aa = ref(111)
   let state = reactive({
     name: 'zf',
     age: 12,
@@ -26,5 +28,6 @@
     state.age = 18
     state.sex.length = 2
   },1000)
+  console.log(aa, 'ref')
 </script>
 </html>

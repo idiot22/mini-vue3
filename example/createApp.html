@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>createApp</title>
+</head>
+<body>
+  <div id="app"></div>
+</body>
+<script src="../node_modules/@vue/runtime-dom/dist//runtime-dom.global.js">
+</script>
+<script>
+  let { createApp, h } = VueRuntimeDom
+  console.log(VueRuntimeDom, 'VueRuntimeDom')
+  // let App = {
+  //   setup(props, context){
+  //     console.log(props, context, 888)
+  //     return (proxy) => {
+  //       h('div', {a: 1})
+  //       h('div')
+  //     }
+  //   }
+  // }
+  let App = {
+    setup(props, context){
+      return (proxy) => {
+        console.log(proxy,proxy.name, 'proxy')
+        return h('div', {style: {color: 'red'}}, 'yaojm')
+      }
+    }
+  }
+  createApp(App, {name: 'yaojm', age: 12}).mount('#app')
+</script>
+</html>
