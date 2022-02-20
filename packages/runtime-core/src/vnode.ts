@@ -33,3 +33,10 @@ function normalizeChildren(vnode, children){
   }
   vnode.shapeFlag |= type
 }
+
+export const Text = Symbol('Text')
+export function normalizeVNode(child){
+  // 将文本节点创建一个虚拟dom，避免覆盖
+  if(isObject(child)) return child
+  return createVnode(Text, null, String(child))
+}
