@@ -1,4 +1,5 @@
 import { effect } from '../../reactivity/src/effect'
+import { patchProp } from '../../runtime-dom/src/patchProp'
 import { ShapeFlags } from '../../shared/src/shapeFlags'
 import { createAppApi } from './apiCreateApp'
 import { createComponentInstance, setupComponent } from './component'
@@ -34,9 +35,13 @@ export function createRenderer(renderOptions){ // 告诉core怎么渲染
       }else{
         // diff算法
         // 更新逻辑
+        const prevTree = instance.subTree
+        let proxyToUse = instance.proxy
+        const nextTree = instance.render.call(proxyToUse, proxyToUse)
+        patch(prevTree, nextTree, container)
       }
     }, {
-      scheduler: queueJob
+      scheduler: queueJob(instance)
     })
   }
   const mountComponent = (initialVnode, container) => {
@@ -66,7 +71,7 @@ export function createRenderer(renderOptions){ // 告诉core怎么渲染
       patch(null, child, el)
     }
   }
-  const mountElement = (vnode, container) => {
+  const mountElement = (vnode, container, anchor) => {
     // 递归渲染
     const { props, shapeFlag, type, children} = vnode
     let el = vnode.el = hostCreateElement(type)
@@ -80,13 +85,148 @@ export function createRenderer(renderOptions){ // 告诉core怎么渲染
     } else if(shapeFlag & ShapeFlags.ARRAY_CHILDREN){
       mountChildren(children, el)
     }
-    hostInsert(el, container)
+    hostInsert(el, container, anchor)
   }
-  const processElement = (n1, n2, container) => {
+  const patchProps = (oldProps, newProps, el) => {
+    if(oldProps !== newProps){
+      for(let key in newProps){
+        const oldProp = oldProps[key]
+        const newProp = newProps[key]
+        hostPatchProp(el, key, oldProp, newProp)
+      }
+      for(let key in oldProps){
+        if(!(key in newProps)){
+          hostPatchProp(el, key, oldProps[key], null)
+        }
+      }
+    }
+  }
+  const unmountChildren = (child) => {
+    child.forEach(it => {
+      unmount(it)
+    })
+  }
+  const patchKeyedChildren = (c1, c2, el) => {
+    let i = 0
+    let e1 = c1.length - 1
+    let e2 = c2.length - 1
+    // sync from start 从头开始一个个比 遇到不同的就停止了
+    while(i <= e1 && i <= e2){
+      const n1 = c1[i]
+      const n2 = c2[i]
+      if(isSameVNode(n1, n2)){
+        patch(n1, n2, el)
+      }else{
+        break
+      }
+      i++
+    }
+    // sync from end
+    while(i <= e1 && i <= e2){
+      const n1 = c1[i]
+      const n2 = c2[i]
+      if(isSameVNode(n1, n2)){
+        patch(n1, n2, el)
+      }else{
+        break
+      }
+      e1--
+      e2--
+    }
+    // common sequence + mount
+    // 比较后 有一方已经完全比对完成了
+    // 如果完成后，最终i的值大于e1，说明老的少
+    if(i > e1){
+      if(i <= e2){ // 表示有新增部分
+        while(i <= e2){
+          const nextPos = e2 + 1
+          // 想知道是向前插入，还是向后插入
+          const anchor = nextPos < c2.length ? c2[nextPos].el : null
+          patch(null, c2[i], el, anchor) // 只向后增加
+          i++
+        }
+      }
+    }else if(i > e2){ // 老的多新的少
+      // common sequence + unmount
+      while(i <= e1){
+        unmount(c1[i])
+        i++
+      } 
+    }else{
+      // unknown sequence
+      // 乱序比较，需要尽可能的复用
+      // 用新的元素做成一个映射表去老的表里找，一样的就复用，不一样的要不插入，要不删除
+      let s1 = i
+      let s2 = i
+      // vue3用的是新做的映射表，vue2用的是老的做映射表
+      const keyToNewIndexMap = new Map()
+      for(let i = s2;i<=e2; i++){
+        const childVNode = c2[i]
+        keyToNewIndexMap.set(childVNode.key, i)
+      }
+      for(let i=s1; i<=e1; i++){
+        const oldVNode = c1[i]
+        let newIndex = keyToNewIndexMap.get(oldVNode.key)
+        if(newIndex === undefined){ // 老的里不再新的中
+          unmount(oldVNode)
+        }else{ // 新老比对
+          patch(oldVNode, c2[newIndex], el)
+        }
+      }
+      // 最后就是移动节点，并且将新增的节点插入
+      // 最长递增子序列
+    }
+  }
+  const patchChildren = (n1, n2, el) => {
+    const c1 = n1.children
+    const c2 = n2.children
+    // 老的有儿子 新的没儿子， 新的有儿子老的没儿子，新老都有儿子， 新老都是文本
+    const preShapFlag = n1.shapeFlag
+    const shapeFlag = n2.shapeFlag
+    if(shapeFlag & ShapeFlags.TEXT_CHILDREN){
+      if(preShapFlag & ShapeFlags.ARRAY_CHILDREN){
+        // 老的是n个孩子，但是新的是文本
+        unmountChildren(c1)
+      }
+      if(c1 !== c2){
+        hostSetElementText(el, c2)
+      }
+    }else{
+      if(preShapFlag & ShapeFlags.ARRAY_CHILDREN){
+        if(shapeFlag & ShapeFlags.ARRAY_CHILDREN){
+          // 当前是数组，之前是数组
+          // 两个数组的比对 => diff算法
+          patchKeyedChildren(c1, c2, el)
+        }else{
+          // 没有孩子
+          unmountChildren(c1)
+        }
+      }else{
+        // 上一次是文本
+        if(preShapFlag & ShapeFlags.TEXT_CHILDREN){
+          hostSetElementText(el, '')
+        }
+        if(shapeFlag & ShapeFlags.ARRAY_CHILDREN){
+          mountChildren(c2, el)
+        }
+      }
+    }
+  }
+  const patchElement = (n1, n2, container) => {
+    // 元素是相同节点
+    let el = n2.el = n1.el
+    // 更新属性 更新儿子
+    const oldProps = n1.props || {}
+    const newProps = n2.props || {}
+    patchProps(oldProps, newProps, el)
+    patchChildren(n1, n2, container)
+  }
+  const processElement = (n1, n2, container, anchor) => {
     if(n1 === null){
-      mountElement(n2, container)
+      mountElement(n2, container, anchor)
     }else{
       // 元素的更新
+      patchElement(n1, n2, container)
     }
   }
   // ---------处理元素-----------
@@ -98,17 +238,28 @@ export function createRenderer(renderOptions){ // 告诉core怎么渲染
     }
   }
   // ---------处理Text-----------
-
-  const patch = (n1, n2, container) => {
+  const isSameVNode = (n1, n2) => {
+    return n1.type === n2.type && n1.key === n2.key
+  }
+  const unmount = (n1) => {
+    hostRemove(n1)
+  }
+  const patch = (n1, n2, container, anchor = null) => {
     // 针对不同类型，做初始化操作
     const { shapeFlag, type } = n2
+    if(n1 && !isSameVNode(n1, n2)){
+      // 不是一样的就删掉原来的，换成n2
+      anchor = hostNextSibling(n1.el)
+      unmount(n1)
+      n1 = null
+    }
     switch (type){
       case Text:
         processText(n1,n2,container)
         break;
       default:
         if(shapeFlag & ShapeFlags.ELEMENT){
-          processElement(n1, n2, container)
+          processElement(n1, n2, container, anchor)
           console.log('元素')
         }else if(shapeFlag & ShapeFlags.STATEFUL_COMPONENT){
           console.log('组件')

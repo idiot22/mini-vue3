@@ -12,7 +12,7 @@
 <script src="../node_modules/@vue/runtime-dom/dist//runtime-dom.global.js">
 </script>
 <script>
-  let { createApp, h } = VueRuntimeDom
+  let { createApp, h, reactive } = VueRuntimeDom
   console.log(VueRuntimeDom, 'VueRuntimeDom')
   // let App = {
   //   setup(props, context){
@@ -23,11 +23,42 @@
   //     }
   //   }
   // }
+  // let App = {
+  //   setup(props, context){
+  //     let state = reactive({
+  //       name: 'yaojm',
+  //       flag: true
+  //     })
+  //     setTimeout(()=>{
+  //       state.flag = false
+  //       state.name = 'hh'
+  //     }, 5000)
+  //     return (proxy) => {
+  //       console.log(proxy,proxy.name, 'proxy')
+  //       return state.flag ? h('div', {style: {color: 'red'}}, state.name) : h('p',{style: {color: 'blue'}}, state.name)
+  //     }
+  //   }
+  // }
   let App = {
     setup(props, context){
+      let state = reactive({
+        flag: true
+      })
+      setTimeout(()=>{
+        state.flag = false
+      }, 1000)
       return (proxy) => {
         console.log(proxy,proxy.name, 'proxy')
-        return h('div', {style: {color: 'red'}}, 'yaojm')
+        return state.flag ? h('div', {style: {color: 'red'}},[
+          h('li', {key: 'a'}, 'a'),
+          h('li', {key: 'b'}, 'b'),
+          h('li', {key: 'c'}, 'c')
+        ]) : h('div',{style: {color: 'blue'}}, [
+          h('li', {key: 'a'}, 'a'),
+          h('li', {key: 'b'}, 'b'),
+          h('li', {key: 'd'}, 'd'),
+          h('li', {key: 'e'}, 'e')
+        ])
       }
     }
   }
