@@ -164,13 +164,40 @@ export function createRenderer(renderOptions){ // 告诉core怎么渲染
         const childVNode = c2[i]
         keyToNewIndexMap.set(childVNode.key, i)
       }
+      // 获取新数组中无序的个数
+      const toBePatched = e2 - s2 + 1
+      // newIndexToOldIndexMap用索引和值建立新旧数组的顺序关系，索引是新数组，要是值有0就说明这个元素的新增的
+      const newIndexToOldIndexMap = new Array(toBePatched).fill(0)
       for(let i=s1; i<=e1; i++){
         const oldVNode = c1[i]
         let newIndex = keyToNewIndexMap.get(oldVNode.key)
         if(newIndex === undefined){ // 老的里不再新的中
           unmount(oldVNode)
         }else{ // 新老比对
+          newIndexToOldIndexMap[newIndex - s2] = i + 1
           patch(oldVNode, c2[newIndex], el)
+        }
+      }
+      let increasingNewIndexSequence = getSequence(newIndexToOldIndexMap)
+      let j = increasingNewIndexSequence.length
+      for(let i = toBePatched - 1; i >= 0; i--){
+        // 找到新数组对应的索引
+        let currentIndex = i + s2
+        // 找到h对应的节点
+        let child = c2[currentIndex]
+        let anchor = currentIndex + 1 < c2.length ? c2[currentIndex+1].el : null
+        // 如果是0就是新增的
+        if(newIndexToOldIndexMap[i] == 0){
+          patch(null, child, el, anchor)
+        }else{
+          // 这种操作需要将节点全部移动一遍
+          // hostInsert(child, el, anchor)
+          if(i !== increasingNewIndexSequence[j]){
+            hostInsert(child, el, anchor)
+          }else{
+            // 跳过不需要移动的元素
+            j--
+          }
         }
       }
       // 最后就是移动节点，并且将新增的节点插入
@@ -275,4 +302,57 @@ export function createRenderer(renderOptions){ // 告诉core怎么渲染
   return {
     createApp: createAppApi(render)
   }
+}
+// [2,5,3,8,9,4,5,2]
+// 2. result [5]
+function getSequence(arr){
+  const len = arr.length
+  const result = [0]
+  const p = arr.slice(0)
+  let start
+  let end
+  let middle
+  for(let i = 0;i < len; i++){
+    const arrI = arr[i]
+    if(arrI !== 0){
+      let resultLastIndex = result[result.length - 1]
+      // 取到索引对应的值
+      // 要是item值大于result，就将索引push到result中
+      if(arr[resultLastIndex] < arrI){
+        // 标记当前前一个对应的索引
+        p[i] = result[resultLastIndex]
+        result.push(i)
+        continue
+      }
+      // 当item小于result最后一个数
+      // 二分查找 找到比当前值大的那一个
+      // 用i替换掉
+      start = 0
+      end = result.length - 1 
+      while(start < end){
+        // 相当于去掉小数点
+        middle = ((start + end)/2) | 0
+        if(arr[result[middle]] < arrI){
+          start = middle + 1
+        }else{
+          end = middle
+        }
+      }
+      // start/end就是找到的位置
+      if(arrI < arr[result[start]]){
+        if(start > 0){
+          // 要将他替换的前一个记住
+          p[i] = result[start - 1]
+        }
+        result[start] = i
+      }
+    }
+  }    
+  let len2 = result.length
+  let last = result[len2-1]
+  while(len2-- >0){
+    result[len2] = last
+    last = p[last]
+  }
+  return result
 }
