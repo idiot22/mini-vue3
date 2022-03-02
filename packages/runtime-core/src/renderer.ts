@@ -2,6 +2,7 @@ import { effect } from '../../reactivity/src/effect'
 import { patchProp } from '../../runtime-dom/src/patchProp'
 import { ShapeFlags } from '../../shared/src/shapeFlags'
 import { createAppApi } from './apiCreateApp'
+import { invokeArrayFn } from './apiLifecycle'
 import { createComponentInstance, setupComponent } from './component'
 import { queueJob } from './queueJob'
 import { normalizeVNode, Text } from './vnode'
@@ -27,18 +28,32 @@ export function createRenderer(renderOptions){ // 告诉core怎么渲染
     instance.update = effect(function componentEffect(){ // 每个组件都有一个effect，vue3是组件级更新，数据变化会重新执行对应的effect
       if(!instance.isMounted){
         // 初次渲染
+        let {bm, m} = instance
+        if(bm){
+          invokeArrayFn(bm)
+        }
         let proxyToUse = instance.proxy
         let subTree = instance.subTree = instance.render.call(proxyToUse, proxyToUse)
         patch(null, subTree, container)
         instance.isMounted = true
+        if(m){
+          invokeArrayFn(m)
+        }
         console.log(subTree, 'subTree')
       }else{
+        let {bu, u} = instance
+        if(bu){
+          invokeArrayFn(bu)
+        }
         // diff算法
         // 更新逻辑
         const prevTree = instance.subTree
         let proxyToUse = instance.proxy
         const nextTree = instance.render.call(proxyToUse, proxyToUse)
         patch(prevTree, nextTree, container)
+        if(u){
+          invokeArrayFn(u)
+        }
       }
     }, {
       scheduler: queueJob(instance)

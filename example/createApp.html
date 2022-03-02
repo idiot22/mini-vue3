@@ -12,7 +12,7 @@
 <script src="../node_modules/@vue/runtime-dom/dist//runtime-dom.global.js">
 </script>
 <script>
-  let { createApp, h, reactive } = VueRuntimeDom
+  let { createApp, h, reactive, onBeforeMount, onMounted } = VueRuntimeDom
   console.log(VueRuntimeDom, 'VueRuntimeDom')
   // let App = {
   //   setup(props, context){
@@ -47,6 +47,15 @@
       setTimeout(()=>{
         state.flag = false
       }, 1000)
+      onBeforeMount(()=>{
+        console.log('onBeforeMount')
+      })
+      onBeforeMount(()=>{
+        console.log('onBeforeMount')
+      })
+      onMounted(()=>{
+        console.log('onMount')
+      })
       return (proxy) => {
         console.log(proxy,proxy.name, 'proxy')
         return state.flag ? h('div', {style: {color: 'red'}},[
