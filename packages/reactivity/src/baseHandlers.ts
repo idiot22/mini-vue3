@@ -55,7 +55,7 @@ function createGetter(isReadonly: boolean = false, isShallow: boolean = false){
 function createSetter(isShallow = false){
   return function set(target, key, value, receiver){
     const oldValue = target[key]
-
+    const result = Reflect.set(target, key, value, receiver)
     let hadKey = isArray(target) && isIntegerKey(key)  ? Number(key) < target.length : hasOwn(target,key)
     if(!hadKey){
       // 新增
@@ -64,5 +64,6 @@ function createSetter(isShallow = false){
       // 修改
       trigger(target, TriggerOrTypes.SET, key, value, oldValue)
     }
+    return result
   }
 }

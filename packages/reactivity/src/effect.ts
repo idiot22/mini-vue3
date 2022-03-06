@@ -58,7 +58,7 @@ export function trigger(target, type, key?, newValue?, oldValue?){
   // 将所有的effect存在集合中，然后一起执行
   const effects = new Set()
   const add = (effectToAdd) => {
-    effectToAdd.forEach(effect => {
+    effectToAdd?.forEach(effect => {
       effects.add(effect)
     });
   }
@@ -82,12 +82,11 @@ export function trigger(target, type, key?, newValue?, oldValue?){
         }
     }
     effects.forEach((effect: any) => {
-      if(effect.options.scheduler){
-        effect.options.scheduler()
+      if(effect.options?.scheduler){
+        effect.options.scheduler(effect)
       }else{
         effect()
       }
     })
-    console.log(effects, 'effect触发')
   }
 }

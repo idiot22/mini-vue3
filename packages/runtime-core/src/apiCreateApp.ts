@@ -20,6 +20,7 @@ export const createAppApi = (render) => {
         app._container = container
       }
     }
+    console.log(app,'app')
     return app
   }
 }

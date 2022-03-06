@@ -1,6 +1,6 @@
 let queue = []
 export function queueJob(job){
-  if(!queue.includes(job)){
+  if(job && !queue.includes(job)){
     queue.push(job)
     queueFlush()
   }
@@ -18,7 +18,9 @@ function flushJobs(){
   queue.sort((a,b) => a.id - b.id)
   for(let i=0;i< queue.length;i++){
     const job = queue[i]
-    job()
+    if(job){
+      job()
+    }
   }
   queue.length = 0
 }

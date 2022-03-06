@@ -56,8 +56,9 @@ export function createRenderer(renderOptions){ // 告诉core怎么渲染
         }
       }
     }, {
-      scheduler: queueJob(instance)
+      scheduler: queueJob
     })
+    console.log(instance.update, 'instance.update')
   }
   const mountComponent = (initialVnode, container) => {
     // 组件的渲染流程
@@ -261,7 +262,7 @@ export function createRenderer(renderOptions){ // 告诉core怎么渲染
     const oldProps = n1.props || {}
     const newProps = n2.props || {}
     patchProps(oldProps, newProps, el)
-    patchChildren(n1, n2, container)
+    patchChildren(n1, n2, el)
   }
   const processElement = (n1, n2, container, anchor) => {
     if(n1 === null){
@@ -284,7 +285,9 @@ export function createRenderer(renderOptions){ // 告诉core怎么渲染
     return n1.type === n2.type && n1.key === n2.key
   }
   const unmount = (n1) => {
-    hostRemove(n1)
+    if(n1.el){
+      hostRemove(n1.el)
+    }
   }
   const patch = (n1, n2, container, anchor = null) => {
     // 针对不同类型，做初始化操作

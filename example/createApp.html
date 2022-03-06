@@ -12,7 +12,7 @@
 <script src="../node_modules/@vue/runtime-dom/dist//runtime-dom.global.js">
 </script>
 <script>
-  let { createApp, h, reactive, onBeforeMount, onMounted } = VueRuntimeDom
+  let { createApp, h, reactive, onBeforeMount, onMounted, effect } = VueRuntimeDom
   console.log(VueRuntimeDom, 'VueRuntimeDom')
   // let App = {
   //   setup(props, context){
@@ -42,11 +42,9 @@
   let App = {
     setup(props, context){
       let state = reactive({
-        flag: true
+        flag: true,
+        name: 'yaom'
       })
-      setTimeout(()=>{
-        state.flag = false
-      }, 1000)
       onBeforeMount(()=>{
         console.log('onBeforeMount')
       })
@@ -56,20 +54,35 @@
       onMounted(()=>{
         console.log('onMount')
       })
-      return (proxy) => {
-        console.log(proxy,proxy.name, 'proxy')
+      effect(()=>{
+        state.name = 'jjj'
+        state.name = 'ggg'
+        state.name = 'yyy'
+        console.log('触发', state.name)
+      })
+      setTimeout(()=>{
+        state.name = 'GGG'
+        state.flag = false 
+      },2000)
+      return {
+        state
+      }
+    },
+    render(proxy){
+        let { state } = proxy
         return state.flag ? h('div', {style: {color: 'red'}},[
-          h('li', {key: 'a'}, 'a'),
+          h('li', {key: 'a'}, state.flag),
           h('li', {key: 'b'}, 'b'),
           h('li', {key: 'c'}, 'c')
         ]) : h('div',{style: {color: 'blue'}}, [
           h('li', {key: 'a'}, 'a'),
-          h('li', {key: 'b'}, 'b'),
-          h('li', {key: 'd'}, 'd'),
-          h('li', {key: 'e'}, 'e')
+          h('li', {key: 'b'}, [
+            h('div',state.name)
+          ]),
+          h('li', {key: 'c'}, 'd'),
+          h('li', {key: 'd'}, 'e')
         ])
       }
-    }
   }
   createApp(App, {name: 'yaojm', age: 12}).mount('#app')
 </script>
